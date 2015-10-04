@@ -2,6 +2,7 @@
 #include "exString.h"
 #include "Wincap.h"
 #include "Utilities.h"
+#include "FileFind.h"
 
 Wincap::Wincap()
 {
@@ -38,8 +39,10 @@ Wincap* Wincap::getInstance(){
 *
 * @return 返回true表示初始化成功，返回false表示初始化失败，使用函数得到错误信息
 */
-bool Wincap::initCap()
+bool Wincap::initCap(bool bSave)
 {
+	mbSaveFile = bSave;
+
 	//如果已经找到设备，那么线释放
 	if (mDevCount > 0)
 	{
@@ -95,9 +98,9 @@ std::vector<pcap_if_t*> Wincap::getAllDevice()
 /**
 * @brief 返回错误信息
 */
-CString Wincap::getErrMsg()
+std::wstring Wincap::getErrMsg()
 {
-	return CString(exString::MultiCharToWideChar(mErrbuf).c_str());
+	return exString::MultiCharToWideChar(mErrbuf);
 }
 
 /**
@@ -195,33 +198,36 @@ bool Wincap::OpenDevice(int selIndex, int selFilter/* = -1*/)
 		}
 
 		//设置自动保存文件
-		/*CFileFind file;
-		char thistime[30];
-		struct tm* ltime;
-		memset(mFilepath, 0, 512);
-		memset(mFilename, 0, 64);
-
-		if (!file.FindFile(_T("SavedData")))
+		if (mbSaveFile)
 		{
-			CreateDirectory(_T("SavedData"), NULL);
+			FileFind file;
+			char thistime[30];
+			struct tm* ltime;
+			memset(mFilepath, 0, 512);
+			memset(mFilename, 0, 64);
+
+			if (!file.IsDirectoryExist(_T("SavedData")))
+			{
+				CreateDirectory(_T("SavedData"), NULL);
+			}
+
+			time_t nowtime;
+			time(&nowtime);
+			ltime = localtime(&nowtime);
+			strftime(thistime, sizeof(thistime), "%Y%m%d %H%M%S", ltime);
+			strcpy(mFilepath, "SavedData\\");
+			strcat(mFilename, thistime);
+			strcat(mFilename, ".lix");
+
+			strcat(mFilepath, mFilename);
+			mDumpfile = pcap_dump_open(mAdhandle, mFilepath);
+			if (mDumpfile == NULL)
+			{
+				const char* errormsg = "文件创建错误";
+				strcpy(mErrbuf, errormsg);
+				break;
+			}
 		}
-
-		time_t nowtime;
-		time(&nowtime);
-		ltime = localtime(&nowtime);
-		strftime(thistime, sizeof(thistime), "%Y%m%d %H%M%S", ltime); 
-		strcpy(mFilepath, "SavedData\\");
-		strcat(mFilename, thistime);
-		strcat(mFilename, ".lix");
-
-		strcat(mFilepath, mFilename);
-		mDumpfile = pcap_dump_open(mAdhandle, mFilepath);
-		if (mDumpfile == NULL)
-		{
-			const char* errormsg = "文件创建错误";
-			strcpy(mErrbuf, errormsg);
-			break;
-		}*/
 
 		bRet = true;
 	} while (false);
@@ -230,17 +236,29 @@ bool Wincap::OpenDevice(int selIndex, int selFilter/* = -1*/)
 }
 
 /**
+* @brief 关闭打开的设备
+*/
+void Wincap::CloseDevice()
+{
+	if (mAdhandle != nullptr)
+	{
+		pcap_close(mAdhandle);
+		mAdhandle = nullptr;
+	}
+}
+
+/**
 * @brief 得到所有过滤器的文本
 *
 * @return std::vector<CString> 返回所有过滤器的文本
 */
-std::vector<CString> Wincap::getFilter()
+std::vector<std::wstring> Wincap::getFilter()
 {
-	std::vector<CString> filterArr;
+	std::vector<std::wstring> filterArr;
 
 	for (auto var : mFilter)
 	{
-		filterArr.push_back(exString::MultiCharToWideChar(var).c_str());
+		filterArr.push_back(exString::MultiCharToWideChar(var));
 	}
 
 	return filterArr;
@@ -249,139 +267,7 @@ std::vector<CString> Wincap::getFilter()
 /**
 * @brief 
 */
-//std::pair<bool, CString> Wincap::getRevData()
-//{
-//	int res;
-//	pcap_pkthdr* header;
-//	const u_char* pkt_data = nullptr;
-//	u_char *ppkt_data;
-//	time_t local_tv_sec;
-//	tm *ltime;
-//
-//	std::pair<bool, CString> bRet = std::make_pair<bool, CString>(false, CString(""));
-//
-//	res = pcap_next_ex(mAdhandle, &header, &pkt_data);
-//
-//	do
-//	{
-//		if (res < 0)
-//		{
-//			const char* errormsg = "接收数据包错误";
-//			strcpy(mErrbuf, errormsg);
-//			break;
-//		}
-//		else if (res == 0)
-//		{
-//			const char* errormsg = "接收数据包超时";
-//			strcpy(mErrbuf, errormsg);
-//			break;
-//		}
-//		else
-//		{
-//
-//			//datapkt* data = new datapkt;
-//			datapkt *data = (datapkt*)malloc(sizeof(datapkt));
-//			ZeroMemory(data, sizeof(datapkt));
-//
-//			if (nullptr == data)
-//			{
-//				const char* errormsg = "空间已满，无法接收新的数据包";
-//				strcpy(mErrbuf, errormsg);
-//				break;
-//			}
-//
-//			if (Utilities::getInstance()->analyze_frame(pkt_data, data, &(this->mNpacket)) < 0)
-//			{
-//				const char* errormsg = "解析数据包出错";
-//				strcpy(mErrbuf, errormsg);
-//				break;
-//			}
-//
-//			if (this->mDumpfile != nullptr)
-//			{
-//				pcap_dump((unsigned char*)this->mDumpfile, header, pkt_data);
-//			}
-//
-//			//ppkt_data = new u_char;
-//			//memcpy(ppkt_data, pkt_data, header->len);
-//			//将本地化后的数据装入一个链表中，以便后来使用		
-//			ppkt_data = (u_char*)malloc(header->len);
-//			memcpy(ppkt_data, pkt_data, header->len);
-//
-//			this->mnetDataList.AddTail(ppkt_data);
-//			this->mlocalDataList.AddTail(data);
-//
-//			/*预处理，获得时间、长度*/
-//			data->len = header->len;								//链路中收到的数据长度
-//			local_tv_sec = header->ts.tv_sec;
-//			ltime = localtime(&local_tv_sec);
-//			data->time[0] = ltime->tm_year + 1900;
-//			data->time[1] = ltime->tm_mon + 1;
-//			data->time[2] = ltime->tm_mday;
-//			data->time[3] = ltime->tm_hour;
-//			data->time[4] = ltime->tm_min;
-//			data->time[5] = ltime->tm_sec;
-//
-//			CString str;
-//			Utilities::getInstance()->print_packet_hex_str(ppkt_data, data->len, &str);
-//
-//			bRet.first = true;
-//			bRet.second = str;
-//
-//			if (data->ethh != nullptr)
-//			{
-//				delete data->ethh;
-//			}
-//
-//			if (data->arph != nullptr)
-//			{
-//				delete data->arph;
-//			}
-//
-//			if (data->iph != nullptr)
-//			{
-//				delete data->iph;
-//			}
-//
-//			if (data->iph6 != nullptr)
-//			{
-//				delete data->iph6;
-//			}
-//
-//			if (data->icmph != nullptr)
-//			{
-//				delete data->icmph;
-//			}
-//
-//			if (data->icmph6 != nullptr)
-//			{
-//				delete data->icmph6;
-//			}
-//
-//			if (data->tcph != nullptr)
-//			{
-//				delete data->tcph;
-//			}
-//
-//			if (data->udph != nullptr)
-//			{
-//				delete data->udph;
-//			}
-//
-//			free(ppkt_data);
-//			free(data);
-//		}
-//	} while (false);
-//
-//	return bRet;
-//}
-
-/**
-* @brief 得到截取到的网络数据包
-*
-* @return std::pair<bool, CString> 返回数据包内容，第一个参数为true时表示截取成功，为false时表示截取失败
-*/
-std::pair<bool, CString> Wincap::getRevDataClean()
+std::pair<bool, CString> Wincap::getRevData()
 {
 	int res;
 	pcap_pkthdr* header;
@@ -391,6 +277,138 @@ std::pair<bool, CString> Wincap::getRevDataClean()
 	tm *ltime;
 
 	std::pair<bool, CString> bRet = std::make_pair<bool, CString>(false, CString(""));
+
+	res = pcap_next_ex(mAdhandle, &header, &pkt_data);
+
+	do
+	{
+		if (res < 0)
+		{
+			const char* errormsg = "接收数据包错误";
+			strcpy(mErrbuf, errormsg);
+			break;
+		}
+		else if (res == 0)
+		{
+			const char* errormsg = "接收数据包超时";
+			strcpy(mErrbuf, errormsg);
+			break;
+		}
+		else
+		{
+
+			//datapkt* data = new datapkt;
+			datapkt *data = (datapkt*)malloc(sizeof(datapkt));
+			ZeroMemory(data, sizeof(datapkt));
+
+			if (nullptr == data)
+			{
+				const char* errormsg = "空间已满，无法接收新的数据包";
+				strcpy(mErrbuf, errormsg);
+				break;
+			}
+
+			if (Utilities::getInstance()->analyze_frame(pkt_data, data, &(this->mNpacket)) < 0)
+			{
+				const char* errormsg = "解析数据包出错";
+				strcpy(mErrbuf, errormsg);
+				break;
+			}
+
+			if (this->mDumpfile != nullptr)
+			{
+				pcap_dump((unsigned char*)this->mDumpfile, header, pkt_data);
+			}
+
+			//ppkt_data = new u_char;
+			//memcpy(ppkt_data, pkt_data, header->len);
+			//将本地化后的数据装入一个链表中，以便后来使用		
+			ppkt_data = (u_char*)malloc(header->len);
+			memcpy(ppkt_data, pkt_data, header->len);
+
+			this->mnetDataList.AddTail(ppkt_data);
+			this->mlocalDataList.AddTail(data);
+
+			/*预处理，获得时间、长度*/
+			data->len = header->len;								//链路中收到的数据长度
+			local_tv_sec = header->ts.tv_sec;
+			ltime = localtime(&local_tv_sec);
+			data->time[0] = ltime->tm_year + 1900;
+			data->time[1] = ltime->tm_mon + 1;
+			data->time[2] = ltime->tm_mday;
+			data->time[3] = ltime->tm_hour;
+			data->time[4] = ltime->tm_min;
+			data->time[5] = ltime->tm_sec;
+
+			CString str;
+			Utilities::getInstance()->print_packet_hex(ppkt_data, data->len, &str);
+
+			bRet.first = true;
+			bRet.second = str;
+
+			if (data->ethh != nullptr)
+			{
+				delete data->ethh;
+			}
+
+			if (data->arph != nullptr)
+			{
+				delete data->arph;
+			}
+
+			if (data->iph != nullptr)
+			{
+				delete data->iph;
+			}
+
+			if (data->iph6 != nullptr)
+			{
+				delete data->iph6;
+			}
+
+			if (data->icmph != nullptr)
+			{
+				delete data->icmph;
+			}
+
+			if (data->icmph6 != nullptr)
+			{
+				delete data->icmph6;
+			}
+
+			if (data->tcph != nullptr)
+			{
+				delete data->tcph;
+			}
+
+			if (data->udph != nullptr)
+			{
+				delete data->udph;
+			}
+
+			free(ppkt_data);
+			free(data);
+		}
+	} while (false);
+
+	return bRet;
+}
+
+/**
+* @brief 得到截取到的网络数据包
+*
+* @return std::pair<bool, CString> 返回数据包内容，第一个参数为true时表示截取成功，为false时表示截取失败
+*/
+std::pair<bool, std::wstring> Wincap::getRevDataClean()
+{
+	int res;
+	pcap_pkthdr* header;
+	const u_char* pkt_data = nullptr;
+	u_char *ppkt_data;
+	time_t local_tv_sec;
+	tm *ltime;
+
+	std::pair<bool, std::wstring> bRet = std::make_pair<bool, std::wstring>(false, std::wstring(L""));
 
 	//得到数据包
 	res = pcap_next_ex(mAdhandle, &header, &pkt_data);
@@ -458,7 +476,7 @@ std::pair<bool, CString> Wincap::getRevDataClean()
 			data->time[5] = ltime->tm_sec;
 
 			//将数据包中的数据解析成字符串
-			CString str;
+			std::wstring str;
 			Utilities::getInstance()->print_packet_hex_str(ppkt_data, data->len, &str);
 
 			bRet.first = true;

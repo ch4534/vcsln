@@ -4,11 +4,15 @@
 using std::string;
 using std::wstring;
 
-class exString : public CString
+/**
+* @brief À©Õ¹×Ö·û´®Àà
+* @Author ³Ì»Ô
+* @Date 20150925
+*/
+class exString : public std::wstring
 {
 public:
 	exString();
-	exString(UINT uID);
 	~exString();
 
 	static string WideCharToMultiChar(wstring wstr);

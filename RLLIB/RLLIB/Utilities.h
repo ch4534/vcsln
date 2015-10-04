@@ -38,7 +38,7 @@ public:
 
 	/*将数据包以十六进制的方式打印*/
 	void print_packet_hex(const u_char* pkt, int size_pkt, CString *buf);
-	void print_packet_hex_str(const u_char* pkt, int size_pkt, CString* buf);
+	void print_packet_hex_str(const u_char* pkt, int size_pkt, std::wstring* wbuf);
 	CString UTF8ToUnicode(char* UTF8);
 	static Utilities* getInstance();
 };

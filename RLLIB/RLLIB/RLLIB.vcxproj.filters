@@ -36,6 +36,9 @@
     <ClInclude Include="Wincap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="FileFind.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="mainexport.cpp">
@@ -48,6 +51,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Wincap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FileFind.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

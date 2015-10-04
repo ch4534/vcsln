@@ -404,11 +404,12 @@ void Utilities::print_packet_hex(const u_char* pkt, int size_pkt, CString* buf)
 * @param int size_pkt 传入数据包的长度
 * @param CString* buf 传入保存解析数据的缓存地址
 */
-void Utilities::print_packet_hex_str(const u_char* pkt, int size_pkt, CString* buf)
+void Utilities::print_packet_hex_str(const u_char* pkt, int size_pkt, std::wstring* wbuf)
 {
 	u_char ch;
 	char tempbuf[2048];
 	memset(tempbuf, 0, 2048);
+	CString buf;
 	CString bufStr;
 	bool isName = true;
 
@@ -441,10 +442,10 @@ void Utilities::print_packet_hex_str(const u_char* pkt, int size_pkt, CString* b
 		//next:
 		ch = pkt[i];
 		ch = isprint(ch) ? ch : '.';
-		buf->AppendFormat(_T("%c"), ch);
+		buf.AppendFormat(_T("%c"), ch);
 		//		}
 
-		if (buf->Find(_T("{")) != -1)
+		if (buf.Find(_T("{")) != -1)
 		{
 			for (; i < size_pkt; i++)
 			{
@@ -461,16 +462,17 @@ void Utilities::print_packet_hex_str(const u_char* pkt, int size_pkt, CString* b
 
 			if (pfind != NULL)
 			{
-				*buf = UTF8ToUnicode(tempbuf);
+				buf = UTF8ToUnicode(tempbuf);
 			}
 
 			break;
 		}
 	}
+
+	*wbuf = buf.GetString();
 }
 
 CString Utilities::UTF8ToUnicode(char* UTF8)
-
 {
 
 	DWORD dwUnicodeLen;        //转换后Unicode的长度
